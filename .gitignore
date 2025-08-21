@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# env file (contains API key) 
+.env
