@@ -8,7 +8,7 @@ from google.genai import types
 
 schema_run_python_file = types.FunctionDeclaration(
     name="run_python_file",
-    description="Runs the specified file in the specified directory, with provided args. constrained to the working directory.",
+    description="Executes a Python file within the working directory and returns the output from the interpreter.",
     parameters=types.Schema(
         type=types.Type.OBJECT,
         properties={
@@ -24,6 +24,7 @@ schema_run_python_file = types.FunctionDeclaration(
                 description="The arguements provided to the file to be run.",
             ),
         },
+        required=["file_path"],
     ),
 )
 

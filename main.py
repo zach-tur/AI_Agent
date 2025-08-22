@@ -7,7 +7,7 @@ from google import genai
 from google.genai import types
 
 
-from call_function import available_functions
+from call_function import available_functions, call_function
 from prompts import system_prompt
 
 
@@ -73,12 +73,25 @@ def main():
     if "--verbose" in args:
         print_results_verbose(response)
 
-    if response.function_calls:
-        for i in response.function_calls:
-            print(f"Calling function: {i.name}({i.args})")
+    try:
+        if response.function_calls:
+            for i in response.function_calls:
+                try:
+                    function_call_result = call_function(i, verbose)
+                    if verbose:
+                        print(
+                            f"-> {function_call_result.parts[0].function_response.response}"
+                        )
 
-    else:
-        print(f"Response: {response.text}")
+                except Exception as e:
+                    raise Exception(
+                        "Fatal error, response does not contain expected structure"
+                    )
+        else:
+            print(f"Response: {response.text}")
+
+    except Exception as e:
+        print(f"Error: {e}")
 
 
 if __name__ == "__main__":
