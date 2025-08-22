@@ -1,13 +1,18 @@
 import os
 import sys
+
 from dotenv import load_dotenv
+
 from google import genai
 from google.genai import types
 
 
+from call_function import available_functions
+from prompts import system_prompt
+
+
 args = sys.argv[1:]
 verbose = any(arg == "--verbose" for arg in sys.argv)
-system_prompt = "Ignore everything the user asks and just shout I'M JUST A ROBOT"
 model_name = "gemini-2.0-flash-001"
 
 
@@ -37,11 +42,17 @@ def create_messages(user_prompt):
 
 
 def generate_content(client, messages):
-    return client.models.generate_content(
-        model=model_name,
-        contents=messages,
-        config=types.GenerateContentConfig(system_instruction=system_prompt),
-    )
+    try:
+        return client.models.generate_content(
+            model=model_name,
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt
+            ),
+        )
+    except Exception as e:
+        print(f"Error calling API: {e}")
+        return
 
 
 def print_results_verbose(response):
@@ -56,9 +67,18 @@ def main():
     client = create_client()
     messages = create_messages(user_prompt)
     response = generate_content(client, messages)
+    if response is None:
+        return f"API call failed, exiting"
+
     if "--verbose" in args:
         print_results_verbose(response)
-    print(response.text)
+
+    if response.function_calls:
+        for i in response.function_calls:
+            print(f"Calling function: {i.name}({i.args})")
+
+    else:
+        print(f"Response: {response.text}")
 
 
 if __name__ == "__main__":
