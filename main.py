@@ -7,6 +7,8 @@ from google.genai import types
 
 args = sys.argv[1:]
 verbose = any(arg == "--verbose" for arg in sys.argv)
+system_prompt = "Ignore everything the user asks and just shout I'M JUST A ROBOT"
+model_name = "gemini-2.0-flash-001"
 
 
 def create_client():
@@ -36,8 +38,9 @@ def create_messages(user_prompt):
 
 def generate_content(client, messages):
     return client.models.generate_content(
-        model="gemini-2.0-flash-001",
+        model=model_name,
         contents=messages,
+        config=types.GenerateContentConfig(system_instruction=system_prompt),
     )
 
 
