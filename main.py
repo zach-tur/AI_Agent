@@ -26,7 +26,7 @@ def parse_arguments():
     if not args:
         print("AI Code Assistant")
         print('\nUsage: python main.py "your prompt here"')
-        print('Example: python mani.py "How do I buil a calculator app?"')
+        print('Example: python mani.py "How do I build a calculator app?"')
         sys.exit(1)
     if verbose:
         user_prompt = " ".join(args[:-1])
