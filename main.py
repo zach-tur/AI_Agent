@@ -9,7 +9,7 @@ from google.genai import types
 
 from call_function import available_functions, call_function
 from prompts import system_prompt
-
+from config import MAX_ITERS
 
 args = sys.argv[1:]
 verbose = any(arg == "--verbose" for arg in sys.argv)
@@ -41,18 +41,48 @@ def create_messages(user_prompt):
     ]
 
 
-def generate_content(client, messages):
+def generate_content(client, messages, verbose):
     try:
-        return client.models.generate_content(
+        response = client.models.generate_content(
             model=model_name,
             contents=messages,
             config=types.GenerateContentConfig(
                 tools=[available_functions], system_instruction=system_prompt
             ),
         )
+
+        if response.candidates:
+            for candidate in response.candidates:
+                messages.append(candidate.content)
+
+        if response.function_calls:
+            function_responses = []
+            for function_call in response.function_calls:
+                function_call_result = call_function(function_call, verbose)
+                if (
+                    function_call_result
+                    and function_call_result.parts
+                    and len(function_call_result.parts) > 0
+                    and function_call_result.parts[0].function_response
+                ):
+                    if verbose:
+                        response_data = function_call_result.parts[
+                            0
+                        ].function_response.response
+                        if response_data and "result" in response_data:
+                            print(f"-> {response_data['result']}")
+                        elif response_data and "error" in response_data:
+                            print(f"-> {response_data['error']}")
+
+                    function_responses.append(function_call_result.parts[0])
+            messages.append(types.Content(role="user", parts=function_responses))
+
+            return None
+        else:
+            return response.text
+
     except Exception as e:
-        print(f"Error calling API: {e}")
-        return
+        print(f"Error: {e}")
 
 
 def print_results_verbose(response):
@@ -66,32 +96,22 @@ def main():
     user_prompt = parse_arguments()
     client = create_client()
     messages = create_messages(user_prompt)
-    response = generate_content(client, messages)
-    if response is None:
-        return f"API call failed, exiting"
+    verbose = "--verbose" in sys.argv
 
-    if "--verbose" in args:
-        print_results_verbose(response)
+    for i in range(MAX_ITERS):
+        try:
+            result = generate_content(client, messages, verbose)
 
-    try:
-        if response.function_calls:
-            for i in response.function_calls:
-                try:
-                    function_call_result = call_function(i, verbose)
-                    if verbose:
-                        print(
-                            f"-> {function_call_result.parts[0].function_response.response}"
-                        )
+            if result:
+                print("Final response:")
+                print(result)
+                if verbose:
+                    print_results_verbose(result)
+                break
 
-                except Exception as e:
-                    raise Exception(
-                        "Fatal error, response does not contain expected structure"
-                    )
-        else:
-            print(f"Response: {response.text}")
-
-    except Exception as e:
-        print(f"Error: {e}")
+        except Exception as e:
+            print(f"Error calling API: {e}")
+            return
 
 
 if __name__ == "__main__":
